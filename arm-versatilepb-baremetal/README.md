@@ -79,7 +79,6 @@ To stop the emulation and return to your terminal:
 
 ## 🔍 Debugging
 If you need to inspect the CPU state (registers):
-Inside QEMU, press `Ctrl + A` then `C` to enter the monitor.
-Type `info registers`.
-Type `Ctrl + A` then `C` again to return to the serial output.
-
+- Inside QEMU, press `Ctrl + A` then `C` to enter the monitor.
+- Type `info registers`.
+- Type `Ctrl + A` then `C` again to return to the serial output.
