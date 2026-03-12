@@ -1,36 +1,41 @@
-# ARM VersatilePB UART Echo & Polling
+# ARM VersatilePB UART Echo & Polling (Modularized)
 
-This project is an evolution of the basic bare-metal "Hello World." It introduces **bidirectional communication** and the concept of **Hardware Polling**, allowing the ARM926EJ-S CPU to not only send data but also "listen" to user input via the PL011 UART peripheral.
+This project evolves the basic bare-metal "Hello World" by implementing a **modular driver architecture**. It demonstrates **bidirectional communication** and **Hardware Polling**, with a professional separation between the hardware-specific driver layer and the application logic.
 
 ## 📂 Project Structure
 
-The project maintains the standard embedded systems directory layout:
+The project follows a clean, industry-standard embedded directory layout:
 
-* **`src/`**: Contains the source files.
-    * `startup.s`: Assembly bootloader that initializes the Stack Pointer (SP) and jumps to C.
-    * `main.c`: The core logic implementing the UART Echo and Polling mechanisms.
-* **`linker/`**: Contains the Linker Script.
-    * `linker.ld`: Maps the binary to the specific memory regions of the VersatilePB (Flash @ 0x10000, RAM @ 0x30000).
-* **`build/`**: (Auto-generated) Stores compiled object files and the `uart_echo.elf` binary.
-* **`Makefile`**: Configures the toolchain and manages the build/emulation workflow.
+* **`src/`**: Contains the C source files and assembly.
+    * `startup.s`: Bootloader that initializes the Stack Pointer (SP).
+    * `main.c`: The core application logic.
+    * `uart.c`: The hardware-specific driver implementation.
+* **`include/`**: Contains header files.
+    * `uart.h`: The driver interface (API) for the application.
+* **`linker/`**: Contains the Linker Script (`linker.ld`).
+* **`build/`**: (Auto-generated) Stores compiled objects and the `uart_echo.elf` binary.
+* **`Makefile`**: Manages multi-file compilation and the emulation workflow.
 
 ---
 
 ## ⚙️ Technical Deep Dive
 
-### 1. Bidirectional UART Communication
-While the previous project only wrote to the Data Register, this version interacts with multiple UART registers to manage data flow:
-* **UART0_DR (0x101f1000)**: Used for both sending (Write) and receiving (Read) characters.
-* **UART0_FR (0x101f1018)**: The **Flag Register**, used to check the status of the transmission and reception buffers.
+### 1. Driver Layering (Hardware Abstraction)
+By separating `uart.c` from `main.c`, we isolate hardware-specific details (like the register address `0x101f1000`) from the application. The `main.c` now interacts only with the clean API defined in `uart.h`.
 
-### 2. Hardware Polling & Bitmasking
-To receive data without an Operating System or Interrupts, the CPU uses **Polling**. 
-The code continuously checks the **RXFE (Receive FIFO Empty)** bit in the Flag Register (Bit 4).
-* **The Mask**: Using `(1 << 4)` creates a bitmask to isolate only the 4th bit.
-* **The Logic**: An `AND` operation between the register value and the mask determines if the buffer is empty. The CPU "spins" in a `while` loop until a character is detected.
+### 2. UART Control & Initialization
+The `uart_init()` function now explicitly configures the **UART Control Register (UART0_CR)**:
+* **UARTEN (Bit 0)**: Enables the UART peripheral.
+* **TXE (Bit 8) & RXE (Bit 9)**: Explicitly enables transmission and reception paths.
+This ensures a predictable hardware state before any data transfer begins.
 
-### 3. Stack Verification
-By defining local variables and buffers (e.g., `char echo_str[2]`), this project validates the **Stack Pointer** initialization performed in `startup.s`. If the stack were incorrectly mapped, the function calls and local variable allocations would cause an immediate system crash.
+### 3. Hardware Polling & Bitmasking
+The CPU monitors the **Flag Register (UART0_FR)** to detect incoming data via the **RXFE (Receive FIFO Empty)** bit (Bit 4).
+* **The Mask**: The operation `(1 << 4)` isolates the status bit.
+* **The Logic**: The CPU performs an `AND` check, effectively "spinning" in place until the buffer status indicates data has arrived.
+
+### 4. Stack Verification
+By using local variables and function calls within a modular environment, this project validates that the **Stack Pointer** configured in `startup.s` correctly handles the call stack, ensuring that the driver calls and variable allocations do not cause system crashes.
 
 ---
 
@@ -47,7 +52,6 @@ sudo apt update
 sudo apt install gcc-arm-none-eabi binutils-arm-none-eabi qemu-system-arm make
 ```
 
-
 ---
 
 ## 🚀 How to Run
@@ -58,6 +62,7 @@ Navigate to the root folder and run:
 ```bash
 make
 ```
+
 This will create the `build/` folder and generate `uart_echo.elf`.
 
 2. Launch the Emulation
